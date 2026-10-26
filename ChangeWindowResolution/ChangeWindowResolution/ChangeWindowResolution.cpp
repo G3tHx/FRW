@@ -22,8 +22,33 @@
 constexpr int CUSTOM_TITLE_HEIGHT = 30;
 constexpr int TITLE_MAX_LENGTH = 256;
 constexpr int THREAD_REFRESH_MS = 5;
-constexpr COLORREF TITLE_BAR_COLOR = RGB(50, 50, 50);
-constexpr COLORREF TITLE_TEXT_COLOR = RGB(255, 255, 255);
+
+// Metro 2033 Visual Palette Constants for Win32 Drawing
+constexpr COLORREF TITLE_BAR_COLOR = RGB(22, 26, 24);      // Bunker dark metallic grey-green
+constexpr COLORREF TITLE_TEXT_COLOR = RGB(50, 230, 120);    // Glowing CRT phosphor green
+constexpr COLORREF ACCENT_LINE_COLOR = RGB(255, 160, 0);   // Metro hazard amber
+
+// Metro 2033 ANSI Color Codes for Terminal UI
+namespace MetroTheme {
+    const wchar_t* RESET        = L"\033[0m";
+    const wchar_t* BOLD         = L"\033[1m";
+    const wchar_t* DIM          = L"\033[2m";
+
+    // CRT Phosphor Greens
+    const wchar_t* GREEN        = L"\033[38;2;50;225;100m";
+    const wchar_t* BRIGHT_GREEN = L"\033[38;2;100;255;140m";
+    const wchar_t* DARK_GREEN   = L"\033[38;2;25;120;50m";
+
+    // Hazard Ambers & Reds
+    const wchar_t* AMBER        = L"\033[38;2;255;170;0m";
+    const wchar_t* HAZARD_RED   = L"\033[38;2;235;60;50m";
+    const wchar_t* WARN_YELLOW  = L"\033[38;2;240;220;60m";
+
+    // Metals & Shadows
+    const wchar_t* STEEL        = L"\033[38;2;140;150;145m";
+    const wchar_t* DARK_STEEL   = L"\033[38;2;75;85;80m";
+    const wchar_t* CYAN_GLOW    = L"\033[38;2;0;210;220m";
+}
 
 // Structures and global variables
 struct WindowInfo {
@@ -84,13 +109,23 @@ POINT g_dragStart = { 0, 0 };
 void SetupConsoleForCyrillic() {
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
+
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut != INVALID_HANDLE_VALUE) {
+        DWORD dwMode = 0;
+        if (GetConsoleMode(hOut, &dwMode)) {
+            SetConsoleMode(hOut, dwMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        }
+    }
+
     _setmode(_fileno(stdout), _O_U16TEXT);
     _setmode(_fileno(stdin), _O_U16TEXT);
     _setmode(_fileno(stderr), _O_U16TEXT);
 }
 
 void DebugLog(const std::wstring& message) {
-    std::wcout << L"[DEBUG] " << message << std::endl;
+    using namespace MetroTheme;
+    std::wcout << DARK_STEEL << L"[2033-LOG] " << AMBER << message << RESET << std::endl;
 }
 
 std::wstring GetProcessNameById(DWORD processId) {
@@ -123,23 +158,31 @@ void CenterWindowOnScreen(HWND hwnd, int width, int height) {
 void DrawCustomTitleBar(HWND hwnd, HDC hdc) {
     RECT windowRect;
     GetWindowRect(hwnd, &windowRect);
+    int width = windowRect.right - windowRect.left;
 
-    // Create rectangle for our title bar
-    RECT titleRect = { 0, 0, windowRect.right - windowRect.left, CUSTOM_TITLE_HEIGHT };
+    // Create rectangle for title bar
+    RECT titleRect = { 0, 0, width, CUSTOM_TITLE_HEIGHT };
 
-    // Draw title bar background
+    // Draw title bar background in bunker dark metallic green
     BrushWrapper titleBrush(TITLE_BAR_COLOR);
     FillRect(hdc, &titleRect, titleBrush);
 
-    // Draw window title
+    // Draw hazard bottom border line
+    RECT accentRect = { 0, CUSTOM_TITLE_HEIGHT - 2, width, CUSTOM_TITLE_HEIGHT };
+    BrushWrapper accentBrush(ACCENT_LINE_COLOR);
+    FillRect(hdc, &accentRect, accentBrush);
+
+    // Draw window title with Metro 2033 styling prefix
     wchar_t title[TITLE_MAX_LENGTH];
     GetWindowTextW(hwnd, title, TITLE_MAX_LENGTH);
+
+    std::wstring formattedTitle = L"[ ☢ METRO 2033 ☢ ]  " + std::wstring(title);
 
     SetBkMode(hdc, TRANSPARENT);
     SetTextColor(hdc, TITLE_TEXT_COLOR);
 
-    titleRect.left += 10; // Left padding for text
-    DrawTextW(hdc, title, -1, &titleRect, DT_SINGLELINE | DT_VCENTER);
+    RECT textRect = { 10, 0, width - 10, CUSTOM_TITLE_HEIGHT - 2 };
+    DrawTextW(hdc, formattedTitle.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
 }
 
 // Window enumeration functions
@@ -387,7 +430,6 @@ LRESULT CALLBACK CustomWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
 // Window size enforcement thread
 void ForceWindowSizeThread(HWND hwnd, int width, int height) {
-    // Use a local copy of data to minimize mutex contention
     LONG style, exStyle, newStyle;
 
     {
@@ -451,7 +493,8 @@ void ForceWindowSizeThread(HWND hwnd, int width, int height) {
 // Main public API
 bool ForceWindowSize(HWND hwnd, int width, int height) {
     if (!hwnd || !IsWindow(hwnd)) {
-        std::wcout << L"Некорректный дескриптор окна!" << std::endl;
+        using namespace MetroTheme;
+        std::wcout << HAZARD_RED << L"[ ❌ ОШИБКА ]: Некорректный дескриптор окна!" << RESET << std::endl;
         return false;
     }
 
@@ -595,35 +638,79 @@ void CleanupResources() {
     g_windowSizes.clear();
 }
 
+// Metro 2033 Terminal UI Components
+void PrintMetroBanner() {
+    using namespace MetroTheme;
+    std::wcout << DARK_STEEL << L"╔═════════════════════════════════════════════════════════════════════════════════════╗\n" << RESET;
+    std::wcout << GREEN << BOLD;
+    std::wcout << L"  █████╗  ██████╗ ██████╗ ██████╗     ██████╗ ███████╗███████╗██╗███████╗███████╗ \n";
+    std::wcout << L" █╔══██╗██╔═══██╗╚════██╗╚════██╗    ██╔═══██╗██╔════╝██╔════╝██║╚══███╔╝██╔════╝ \n";
+    std::wcout << L" ╚█████║██║   ██║ █████╔╝ █████╔╝    ██║   ██║███████╗█████╗  ██║  ███╔╝ █████╗   \n";
+    std::wcout << L" █╔══██╗██║   ██║ ╚═══██╗ ╚═══██╗    ██║   ██║╚════██║██╔══╝  ██║ ███╔╝  ██╔══╝   \n";
+    std::wcout << L" ╚█████╔╝╚██████╔╝██████╔╝██████╔╝    ╚██████╔╝███████╗███████╗██║███████╗███████╗\n";
+    std::wcout << L"  ╚════╝  ╚═════╝ ╚═════╝ ╚═════╝      ╚═════╝ ╚══════╝╚══════╝╚═╝╚══════╝╚══════╝\n" << RESET;
+    std::wcout << DARK_STEEL << L"╠═════════════════════════════════════════════════════════════════════════════════════╣\n" << RESET;
+    std::wcout << AMBER << L"  [ ☢ МЕТРО-2033 :: FRW ТЕРМИНАЛ ПРИНУДИТЕЛЬНОГО ИЗМЕНЕНИЯ РАЗРЕШЕНИЯ ОКОН ☢ ]\n" << RESET;
+    std::wcout << STEEL << L"  [ СИСТЕМА УПРАВЛЕНИЯ ОКОННЫМИ ПРОЦЕССАМИ БУНКЕРА | СЕКТОР-2033 | REVISION 4.5 ]\n" << RESET;
+    std::wcout << DARK_STEEL << L"╚═════════════════════════════════════════════════════════════════════════════════════╝\n\n" << RESET;
+}
+
 // Main application
 int main() {
+    using namespace MetroTheme;
     try {
         // Increase process priority
         SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
-        // Setup console for Unicode output
+        // Setup console for Unicode & ANSI color support
         SetupConsoleForCyrillic();
 
-        std::wcout << L"Программа для принудительного изменения размера окна" << std::endl;
-        std::wcout << L"-----------------------------------------------------" << std::endl;
+        // Print post-apocalyptic Metro 2033 Header
+        PrintMetroBanner();
 
-        // List all available windows
-        std::wcout << L"Список доступных окон:" << std::endl;
-        std::wcout << L"ID\tНазвание окна\tПроцесс" << std::endl;
-        std::wcout << L"-----------------------------------------------------" << std::endl;
+        // List all available windows in a structured box container
+        std::wcout << AMBER << L"┌─── [ ☢ СПИСОК АКТИВНЫХ ОКОН В СИСТЕМЕ ☢ ] ───────────────────────────────────────────┐\n" << RESET;
+        std::wcout << DARK_STEEL << L"│ " << AMBER << L"№   " << DARK_STEEL << L"│ "
+                   << GREEN << L"НАЗВАНИЕ ОКНА                            " << DARK_STEEL << L"│ "
+                   << CYAN_GLOW << L"ПРОЦЕСС (PID)                   " << DARK_STEEL << L"│\n" << RESET;
+        std::wcout << DARK_STEEL << L"├───┼─────────────────────────────────────────┼─────────────────────────────────┤\n" << RESET;
 
         auto windows = EnumerateWindows();
         for (size_t i = 0; i < windows.size(); ++i) {
             std::wstring processName = GetProcessNameById(windows[i].processId);
-            std::wcout << i + 1 << L"\t"
-                << windows[i].title.substr(0, 40)
-                << (windows[i].title.length() > 40 ? L"..." : L"") << L"\t"
-                << processName << L" (" << windows[i].processId << L")" << std::endl;
+
+            std::wstring titleDisplay = windows[i].title;
+            if (titleDisplay.length() > 39) {
+                titleDisplay = titleDisplay.substr(0, 36) + L"...";
+            } else {
+                titleDisplay.resize(39, L' ');
+            }
+
+            std::wstring procInfo = processName + L" (" + std::to_wstring(windows[i].processId) + L")";
+            if (procInfo.length() > 31) {
+                procInfo = procInfo.substr(0, 28) + L"...";
+            } else {
+                procInfo.resize(31, L' ');
+            }
+
+            wchar_t numStr[10];
+            swprintf(numStr, 10, L"%02d", static_cast<int>(i + 1));
+
+            std::wcout << DARK_STEEL << L"│ " << WARN_YELLOW << numStr << DARK_STEEL << L" │ "
+                       << GREEN << titleDisplay << DARK_STEEL << L" │ "
+                       << STEEL << procInfo << DARK_STEEL << L" │\n" << RESET;
         }
 
-        // Window or process selection
+        std::wcout << DARK_STEEL << L"└───┴─────────────────────────────────────────┴─────────────────────────────────┘\n\n" << RESET;
+
+        // Interactive Selection Menu
+        std::wcout << AMBER << L"┌── [ ⚡ ВЫБОР ЦЕЛИ ⚡ ] ────────────────────────────────────────────────────────┐\n" << RESET;
+        std::wcout << STEEL << L"│ Введите " << WARN_YELLOW << L"номер окна" << STEEL << L" из списка для прямого захвата,\n";
+        std::wcout << STEEL << L"│ Введите " << WARN_YELLOW << L"0" << STEEL << L" для поиска окна по названию,\n";
+        std::wcout << STEEL << L"│ Или " << WARN_YELLOW << L"-1" << STEEL << L" для захвата всех окон определенного процесса.\n";
+        std::wcout << AMBER << L"└─► " << BRIGHT_GREEN << L"ВЫБОР: " << RESET;
+
         int windowIndex;
-        std::wcout << L"\nВведите номер окна, 0 для поиска по названию, или -1 для выбора процесса: ";
         std::wcin >> windowIndex;
 
         HWND targetWindow = NULL;
@@ -631,7 +718,7 @@ int main() {
         bool forceAllWindows = false;
 
         if (windowIndex == -1) {
-            // Process selection
+            // Process selection mode
             std::map<DWORD, std::wstring> processes;
 
             for (const auto& window : windows) {
@@ -640,18 +727,36 @@ int main() {
                 }
             }
 
-            std::wcout << L"Список доступных процессов:" << std::endl;
-            std::wcout << L"ID\tНазвание процесса\tPID" << std::endl;
-            std::wcout << L"-----------------------------------------------------" << std::endl;
+            std::wcout << AMBER << L"\n┌─── [ ☣ СПИСОК АКТИВНЫХ ПРОЦЕССОВ ☣ ] ───────────────────────────────────────────────┐\n" << RESET;
+            std::wcout << DARK_STEEL << L"│ " << AMBER << L"№   " << DARK_STEEL << L"│ "
+                       << GREEN << L"НАЗВАНИЕ ПРОЦЕССА               " << DARK_STEEL << L"│ "
+                       << CYAN_GLOW << L"PID             " << DARK_STEEL << L"│\n" << RESET;
+            std::wcout << DARK_STEEL << L"├───┼─────────────────────────────────┼─────────────────┤\n" << RESET;
 
             int i = 1;
             for (const auto& proc : processes) {
-                std::wcout << i << L"\t" << proc.second << L"\t" << proc.first << std::endl;
+                std::wstring procNameDisp = proc.second;
+                if (procNameDisp.length() > 31) {
+                    procNameDisp = procNameDisp.substr(0, 28) + L"...";
+                } else {
+                    procNameDisp.resize(31, L' ');
+                }
+
+                std::wstring pidDisp = std::to_wstring(proc.first);
+                pidDisp.resize(15, L' ');
+
+                wchar_t pNumStr[10];
+                swprintf(pNumStr, 10, L"%02d", i);
+
+                std::wcout << DARK_STEEL << L"│ " << WARN_YELLOW << pNumStr << DARK_STEEL << L" │ "
+                           << GREEN << procNameDisp << DARK_STEEL << L" │ "
+                           << CYAN_GLOW << pidDisp << DARK_STEEL << L" │\n" << RESET;
                 i++;
             }
+            std::wcout << DARK_STEEL << L"└───┴─────────────────────────────────┴─────────────────┘\n\n" << RESET;
 
+            std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса: " << RESET;
             int processIndex;
-            std::wcout << L"\nВведите номер процесса: ";
             std::wcin >> processIndex;
 
             if (processIndex >= 1 && processIndex <= static_cast<int>(processes.size())) {
@@ -660,17 +765,18 @@ int main() {
                 targetProcessId = it->first;
                 forceAllWindows = true;
 
-                std::wcout << L"Выбран процесс: " << it->second << L" (PID: " << targetProcessId << L")" << std::endl;
+                std::wcout << GREEN << L"[ ✔ ] Захвачен процесс: " << WARN_YELLOW << it->second
+                           << GREEN << L" (PID: " << CYAN_GLOW << targetProcessId << GREEN << L")\n" << RESET;
             }
             else {
                 throw std::runtime_error("Некорректный номер процесса");
             }
         }
         else if (windowIndex == 0) {
-            // Search by title
+            // Search by partial window title
             std::wstring searchTitle;
             std::wcin.ignore(); // Clear input buffer
-            std::wcout << L"Введите часть заголовка окна для поиска: ";
+            std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите фрагмент заголовка окна: " << RESET;
             std::getline(std::wcin, searchTitle);
 
             targetWindow = FindWindowByPartialTitle(searchTitle);
@@ -679,6 +785,7 @@ int main() {
             }
 
             GetWindowThreadProcessId(targetWindow, &targetProcessId);
+            std::wcout << GREEN << L"[ ✔ ] Окно успешно найдено в реестре процессов.\n" << RESET;
         }
         else if (windowIndex >= 1 && windowIndex <= static_cast<int>(windows.size())) {
             targetWindow = windows[windowIndex - 1].hwnd;
@@ -688,12 +795,15 @@ int main() {
             throw std::runtime_error("Некорректный номер окна");
         }
 
-        // Get desired window size
+        // Prompt for desired window dimensions
         int newWidth, newHeight;
-        std::wcout << L"Введите новую ширину окна: ";
+        std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
+        std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
+        std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
         std::wcin >> newWidth;
-        std::wcout << L"Введите новую высоту окна: ";
+        std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
         std::wcin >> newHeight;
+        std::wcout << AMBER << L"└───────────────────────────────────────────────────────────────────────────────┘\n" << RESET;
 
         if (newWidth <= 0 || newHeight <= 0) {
             throw std::runtime_error("Недопустимый размер окна");
@@ -704,10 +814,11 @@ int main() {
         if (forceAllWindows) {
             success = ForceWindowSizeForAllProcessWindows(targetProcessId, newWidth, newHeight);
             if (success) {
-                std::wcout << L"Размер всех окон процесса изменен на " << newWidth << L"x" << newHeight << std::endl;
+                std::wcout << GREEN << L"\n[ ✔ ] Разрешение всех окон процесса успешно изменено на "
+                           << WARN_YELLOW << newWidth << L"x" << newHeight << GREEN << L" px\n" << RESET;
             }
             else {
-                std::wcout << L"Не удалось изменить размер окон процесса" << std::endl;
+                std::wcout << HAZARD_RED << L"\n[ ❌ ] Не удалось изменить размер окон процесса!\n" << RESET;
             }
         }
         else {
@@ -716,37 +827,44 @@ int main() {
             int currentWidth = windowRect.right - windowRect.left;
             int currentHeight = windowRect.bottom - windowRect.top;
 
-            std::wcout << L"Текущий размер окна: " << currentWidth
-                << L"x" << currentHeight << std::endl;
+            std::wcout << STEEL << L"\n[ ℹ ] Исходный размер окна: " << WARN_YELLOW
+                       << currentWidth << L"x" << currentHeight << STEEL << L" px\n" << RESET;
 
             if (ForceWindowSize(targetWindow, newWidth, newHeight)) {
-                std::wcout << L"Размер окна принудительно установлен на " << newWidth
-                    << L"x" << newHeight << std::endl;
-                std::wcout << L"Контролирующий поток активирован для поддержания размера" << std::endl;
+                std::wcout << GREEN << L"[ ✔ ] Разрешение окна принудительно установлено на "
+                           << WARN_YELLOW << newWidth << L"x" << newHeight << GREEN << L" px\n" << RESET;
                 success = true;
             }
             else {
-                std::wcout << L"Не удалось изменить размер окна" << std::endl;
+                std::wcout << HAZARD_RED << L"[ ❌ ] Не удалось изменить размер окна!\n" << RESET;
             }
         }
 
         if (success) {
-            std::wcout << L"\nПрограмма активно поддерживает указанный размер окна." << std::endl;
-            std::wcout << L"Для выхода и восстановления исходного поведения окна нажмите любую клавишу..." << std::endl;
+            std::wcout << HAZARD_RED << L"\n╔═══════════════════════════════════════════════════════════════════════════════╗\n";
+            std::wcout << L"║ ☣  СИСТЕМА СТАБИЛИЗАЦИИ РАЗРЕШЕНИЯ «МЕТРО-2033» АКТИВИРОВАНА  ☣               ║\n";
+            std::wcout << L"╠═══════════════════════════════════════════════════════════════════════════════╣\n" << RESET;
+            std::wcout << STEEL << L"║  Статус    : " << BRIGHT_GREEN << L"[ ПОТОК ПРИНУДЕНИЯ АКТИВЕН ]" << STEEL << L"\n";
+            std::wcout << STEEL << L"║  Разрешение: " << WARN_YELLOW << newWidth << L" x " << newHeight << STEEL << L" px\n";
+            std::wcout << STEEL << L"║  Интервал  : " << AMBER << THREAD_REFRESH_MS << L" ms\n";
+            std::wcout << HAZARD_RED << L"╠═══════════════════════════════════════════════════════════════════════════════╣\n";
+            std::wcout << L"║ 🛑 [ СТАНЦИЯ В БЕЗОПАСНОСТИ ] Для восстановления и выхода нажмите ENTER...    ║\n";
+            std::wcout << L"╚═══════════════════════════════════════════════════════════════════════════════╝\n\n" << RESET;
+
             std::wcin.ignore();
             std::wcin.get();
 
             CleanupResources();
         }
         else {
-            std::wcout << L"\nНажмите любую клавишу для выхода..." << std::endl;
+            std::wcout << AMBER << L"\n[ 🛑 ] Нажмите ENTER для выхода из терминала..." << RESET << std::endl;
             std::wcin.ignore();
             std::wcin.get();
         }
     }
     catch (const std::exception& ex) {
-        std::wcerr << L"Ошибка: " << ex.what() << std::endl;
-        std::wcout << L"\nНажмите любую клавишу для выхода..." << std::endl;
+        std::wcerr << HAZARD_RED << L"\n[ ❌ КРИТИЧЕСКИЙ СБОЙ СИСТЕМЫ 2033 ]: " << ex.what() << RESET << std::endl;
+        std::wcout << AMBER << L"\n[ 🛑 ] Нажмите ENTER для выхода из терминала..." << RESET << std::endl;
         std::wcin.ignore();
         std::wcin.get();
     }
