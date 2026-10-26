@@ -13,6 +13,9 @@
 #include <Psapi.h>
 #include <memory>
 #include <mutex>
+#include <algorithm>
+#include <cwctype>
+#include <limits>
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "user32.lib")
@@ -126,6 +129,17 @@ void SetupConsoleForCyrillic() {
 void DebugLog(const std::wstring& message) {
     using namespace MetroTheme;
     std::wcout << DARK_STEEL << L"[2033-LOG] " << AMBER << message << RESET << std::endl;
+}
+
+int ReadIntegerInput() {
+    int val;
+    while (!(std::wcin >> val)) {
+        std::wcin.clear();
+        std::wcin.ignore((std::numeric_limits<std::streamsize>::max)(), L'\n');
+        using namespace MetroTheme;
+        std::wcout << HAZARD_RED << L"[ ❌ ОШИБКА ]: Введите числовое значение: " << RESET;
+    }
+    return val;
 }
 
 std::wstring GetProcessNameById(DWORD processId) {
@@ -498,16 +512,17 @@ bool ForceWindowSize(HWND hwnd, int width, int height) {
         return false;
     }
 
-    // Set up hooks and window proc
-    {
+    // Set up hooks and window proc if local process thread
+    DWORD windowThreadId = GetWindowThreadProcessId(hwnd, NULL);
+    if (windowThreadId == GetCurrentThreadId()) {
         std::lock_guard<std::mutex> lock(g_stateMutex);
 
         // Store original window procedure
         WNDPROC oldWndProc = (WNDPROC)GetWindowLongPtr(hwnd, GWLP_WNDPROC);
-        g_originalWndProcs[hwnd] = oldWndProc;
-
-        // Set custom window procedure
-        SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)CustomWindowProc);
+        if (oldWndProc && oldWndProc != (WNDPROC)CustomWindowProc) {
+            g_originalWndProcs[hwnd] = oldWndProc;
+            SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)CustomWindowProc);
+        }
 
         // Initialize hooks if not done yet
         if (!g_messageHook) {
@@ -557,8 +572,14 @@ std::vector<WindowInfo> EnumerateWindows() {
 }
 
 HWND FindWindowByPartialTitle(const std::wstring& partialTitle) {
+    std::wstring lowerSearch = partialTitle;
+    std::transform(lowerSearch.begin(), lowerSearch.end(), lowerSearch.begin(), ::towlower);
+
     for (const auto& window : EnumerateWindows()) {
-        if (window.title.find(partialTitle) != std::wstring::npos) {
+        std::wstring lowerTitle = window.title;
+        std::transform(lowerTitle.begin(), lowerTitle.end(), lowerTitle.begin(), ::towlower);
+
+        if (lowerTitle.find(lowerSearch) != std::wstring::npos) {
             return window.hwnd;
         }
     }
@@ -710,8 +731,7 @@ int main() {
         std::wcout << STEEL << L"│ Или " << WARN_YELLOW << L"-1" << STEEL << L" для захвата всех окон определенного процесса.\n";
         std::wcout << AMBER << L"└─► " << BRIGHT_GREEN << L"ВЫБОР: " << RESET;
 
-        int windowIndex;
-        std::wcin >> windowIndex;
+        int windowIndex = ReadIntegerInput();
 
         HWND targetWindow = NULL;
         DWORD targetProcessId = 0;
@@ -756,8 +776,7 @@ int main() {
             std::wcout << DARK_STEEL << L"└───┴─────────────────────────────────┴─────────────────┘\n\n" << RESET;
 
             std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса: " << RESET;
-            int processIndex;
-            std::wcin >> processIndex;
+            int processIndex = ReadIntegerInput();
 
             if (processIndex >= 1 && processIndex <= static_cast<int>(processes.size())) {
                 auto it = processes.begin();
@@ -775,7 +794,7 @@ int main() {
         else if (windowIndex == 0) {
             // Search by partial window title
             std::wstring searchTitle;
-            std::wcin.ignore(); // Clear input buffer
+            std::wcin.ignore((std::numeric_limits<std::streamsize>::max)(), L'\n'); // Clear input buffer
             std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите фрагмент заголовка окна: " << RESET;
             std::getline(std::wcin, searchTitle);
 
@@ -796,13 +815,12 @@ int main() {
         }
 
         // Prompt for desired window dimensions
-        int newWidth, newHeight;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
-        std::wcin >> newWidth;
+        int newWidth = ReadIntegerInput();
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
-        std::wcin >> newHeight;
+        int newHeight = ReadIntegerInput();
         std::wcout << AMBER << L"└───────────────────────────────────────────────────────────────────────────────┘\n" << RESET;
 
         if (newWidth <= 0 || newHeight <= 0) {
@@ -851,21 +869,21 @@ int main() {
             std::wcout << L"║ 🛑 [ СТАНЦИЯ В БЕЗОПАСНОСТИ ] Для восстановления и выхода нажмите ENTER...    ║\n";
             std::wcout << L"╚═══════════════════════════════════════════════════════════════════════════════╝\n\n" << RESET;
 
-            std::wcin.ignore();
+            std::wcin.ignore((std::numeric_limits<std::streamsize>::max)(), L'\n');
             std::wcin.get();
 
             CleanupResources();
         }
         else {
             std::wcout << AMBER << L"\n[ 🛑 ] Нажмите ENTER для выхода из терминала..." << RESET << std::endl;
-            std::wcin.ignore();
+            std::wcin.ignore((std::numeric_limits<std::streamsize>::max)(), L'\n');
             std::wcin.get();
         }
     }
     catch (const std::exception& ex) {
         std::wcerr << HAZARD_RED << L"\n[ ❌ КРИТИЧЕСКИЙ СБОЙ СИСТЕМЫ 2033 ]: " << ex.what() << RESET << std::endl;
         std::wcout << AMBER << L"\n[ 🛑 ] Нажмите ENTER для выхода из терминала..." << RESET << std::endl;
-        std::wcin.ignore();
+        std::wcin.ignore((std::numeric_limits<std::streamsize>::max)(), L'\n');
         std::wcin.get();
     }
 
