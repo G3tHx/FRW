@@ -711,7 +711,9 @@ int main() {
         std::wcout << AMBER << L"└─► " << BRIGHT_GREEN << L"ВЫБОР: " << RESET;
 
         int windowIndex;
-        std::wcin >> windowIndex;
+        if (!(std::wcin >> windowIndex)) {
+            throw std::runtime_error("Некорректный формат ввода выбора");
+        }
 
         HWND targetWindow = NULL;
         DWORD targetProcessId = 0;
@@ -757,7 +759,9 @@ int main() {
 
             std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса: " << RESET;
             int processIndex;
-            std::wcin >> processIndex;
+            if (!(std::wcin >> processIndex)) {
+                throw std::runtime_error("Некорректный формат ввода номера процесса");
+            }
 
             if (processIndex >= 1 && processIndex <= static_cast<int>(processes.size())) {
                 auto it = processes.begin();
@@ -796,13 +800,26 @@ int main() {
         }
 
         // Prompt for desired window dimensions
-        int newWidth, newHeight;
+        int newWidth = 0, newHeight = 0;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
+        if (targetWindow) {
+            RECT windowRect;
+            if (GetWindowRect(targetWindow, &windowRect)) {
+                int currentWidth = windowRect.right - windowRect.left;
+                int currentHeight = windowRect.bottom - windowRect.top;
+                std::wcout << STEEL << L"│ Текущее разрешение окна: " << WARN_YELLOW
+                           << currentWidth << L"x" << currentHeight << STEEL << L" px\n" << RESET;
+            }
+        }
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
-        std::wcin >> newWidth;
+        if (!(std::wcin >> newWidth)) {
+            throw std::runtime_error("Некорректный формат ширины");
+        }
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
-        std::wcin >> newHeight;
+        if (!(std::wcin >> newHeight)) {
+            throw std::runtime_error("Некорректный формат высоты");
+        }
         std::wcout << AMBER << L"└───────────────────────────────────────────────────────────────────────────────┘\n" << RESET;
 
         if (newWidth <= 0 || newHeight <= 0) {
@@ -822,14 +839,6 @@ int main() {
             }
         }
         else {
-            RECT windowRect;
-            GetWindowRect(targetWindow, &windowRect);
-            int currentWidth = windowRect.right - windowRect.left;
-            int currentHeight = windowRect.bottom - windowRect.top;
-
-            std::wcout << STEEL << L"\n[ ℹ ] Исходный размер окна: " << WARN_YELLOW
-                       << currentWidth << L"x" << currentHeight << STEEL << L" px\n" << RESET;
-
             if (ForceWindowSize(targetWindow, newWidth, newHeight)) {
                 std::wcout << GREEN << L"[ ✔ ] Разрешение окна принудительно установлено на "
                            << WARN_YELLOW << newWidth << L"x" << newHeight << GREEN << L" px\n" << RESET;
