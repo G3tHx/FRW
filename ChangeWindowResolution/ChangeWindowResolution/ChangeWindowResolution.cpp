@@ -13,6 +13,7 @@
 #include <Psapi.h>
 #include <memory>
 #include <mutex>
+#include <limits>
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "user32.lib")
@@ -639,6 +640,22 @@ void CleanupResources() {
 }
 
 // Metro 2033 Terminal UI Components
+int ReadValidInt(const std::wstring& prompt = L"") {
+    using namespace MetroTheme;
+    int val;
+    while (true) {
+        if (!prompt.empty()) {
+            std::wcout << prompt;
+        }
+        if (std::wcin >> val) {
+            return val;
+        }
+        std::wcin.clear();
+        std::wcin.ignore((std::numeric_limits<std::streamsize>::max)(), L'\n');
+        std::wcout << HAZARD_RED << L"[ ❌ ] Некорректный ввод! Введите число: " << RESET;
+    }
+}
+
 void PrintMetroBanner() {
     using namespace MetroTheme;
     std::wcout << DARK_STEEL << L"╔═════════════════════════════════════════════════════════════════════════════════════╗\n" << RESET;
@@ -710,8 +727,7 @@ int main() {
         std::wcout << STEEL << L"│ Или " << WARN_YELLOW << L"-1" << STEEL << L" для захвата всех окон определенного процесса.\n";
         std::wcout << AMBER << L"└─► " << BRIGHT_GREEN << L"ВЫБОР: " << RESET;
 
-        int windowIndex;
-        std::wcin >> windowIndex;
+        int windowIndex = ReadValidInt();
 
         HWND targetWindow = NULL;
         DWORD targetProcessId = 0;
@@ -755,9 +771,7 @@ int main() {
             }
             std::wcout << DARK_STEEL << L"└───┴─────────────────────────────────┴─────────────────┘\n\n" << RESET;
 
-            std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса: " << RESET;
-            int processIndex;
-            std::wcin >> processIndex;
+            int processIndex = ReadValidInt(AMBER + std::wstring(L"┌───► ") + BRIGHT_GREEN + L"Введите номер процесса: " + RESET);
 
             if (processIndex >= 1 && processIndex <= static_cast<int>(processes.size())) {
                 auto it = processes.begin();
@@ -799,10 +813,8 @@ int main() {
         int newWidth, newHeight;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
-        std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
-        std::wcin >> newWidth;
-        std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
-        std::wcin >> newHeight;
+        newWidth = ReadValidInt(AMBER + std::wstring(L"├─► ") + GREEN + L"Новая ШИРИНА  (px): " + RESET);
+        newHeight = ReadValidInt(AMBER + std::wstring(L"├─► ") + GREEN + L"Новая ВЫСОТА (px): " + RESET);
         std::wcout << AMBER << L"└───────────────────────────────────────────────────────────────────────────────┘\n" << RESET;
 
         if (newWidth <= 0 || newHeight <= 0) {
