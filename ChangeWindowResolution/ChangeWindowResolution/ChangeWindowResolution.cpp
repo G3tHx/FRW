@@ -711,7 +711,11 @@ int main() {
         std::wcout << AMBER << L"└─► " << BRIGHT_GREEN << L"ВЫБОР: " << RESET;
 
         int windowIndex;
-        std::wcin >> windowIndex;
+        if (!(std::wcin >> windowIndex)) {
+            std::wcin.clear();
+            std::wcin.ignore(10000, L'\n');
+            throw std::runtime_error("Некорректный ввод выборa (ожидалось число)");
+        }
 
         HWND targetWindow = NULL;
         DWORD targetProcessId = 0;
@@ -757,7 +761,11 @@ int main() {
 
             std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса: " << RESET;
             int processIndex;
-            std::wcin >> processIndex;
+            if (!(std::wcin >> processIndex)) {
+                std::wcin.clear();
+                std::wcin.ignore(10000, L'\n');
+                throw std::runtime_error("Некорректный ввод номера процесса (ожидалось число)");
+            }
 
             if (processIndex >= 1 && processIndex <= static_cast<int>(processes.size())) {
                 auto it = processes.begin();
@@ -799,10 +807,19 @@ int main() {
         int newWidth, newHeight;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
+        std::wcout << STEEL << L"│ Популярные форматы: " << WARN_YELLOW << L"1920x1080" << STEEL << L" | " << WARN_YELLOW << L"1600x900" << STEEL << L" | " << WARN_YELLOW << L"1280x720" << STEEL << L" | " << WARN_YELLOW << L"1024x768" << STEEL << L"\n";
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
-        std::wcin >> newWidth;
+        if (!(std::wcin >> newWidth)) {
+            std::wcin.clear();
+            std::wcin.ignore(10000, L'\n');
+            throw std::runtime_error("Некорректный ввод ширины (ожидалось число)");
+        }
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
-        std::wcin >> newHeight;
+        if (!(std::wcin >> newHeight)) {
+            std::wcin.clear();
+            std::wcin.ignore(10000, L'\n');
+            throw std::runtime_error("Некорректный ввод высоты (ожидалось число)");
+        }
         std::wcout << AMBER << L"└───────────────────────────────────────────────────────────────────────────────┘\n" << RESET;
 
         if (newWidth <= 0 || newHeight <= 0) {
