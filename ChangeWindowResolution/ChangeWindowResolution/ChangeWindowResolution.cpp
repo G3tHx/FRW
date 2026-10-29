@@ -13,6 +13,7 @@
 #include <Psapi.h>
 #include <memory>
 #include <mutex>
+#include <limits>
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "user32.lib")
@@ -710,8 +711,17 @@ int main() {
         std::wcout << STEEL << L"│ Или " << WARN_YELLOW << L"-1" << STEEL << L" для захвата всех окон определенного процесса.\n";
         std::wcout << AMBER << L"└─► " << BRIGHT_GREEN << L"ВЫБОР: " << RESET;
 
+        auto ClearInputBuffer = []() {
+            if (std::wcin.fail()) {
+                std::wcin.clear();
+            }
+            std::wcin.ignore((std::numeric_limits<std::streamsize>::max)(), L'\n');
+        };
+
         int windowIndex;
-        std::wcin >> windowIndex;
+        if (!(std::wcin >> windowIndex)) {
+            throw std::runtime_error("Введено некорректное числовое значение для выбора окна");
+        }
 
         HWND targetWindow = NULL;
         DWORD targetProcessId = 0;
@@ -757,7 +767,9 @@ int main() {
 
             std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса: " << RESET;
             int processIndex;
-            std::wcin >> processIndex;
+            if (!(std::wcin >> processIndex)) {
+                throw std::runtime_error("Введено некорректное значение номера процесса");
+            }
 
             if (processIndex >= 1 && processIndex <= static_cast<int>(processes.size())) {
                 auto it = processes.begin();
@@ -799,10 +811,15 @@ int main() {
         int newWidth, newHeight;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
+        std::wcout << STEEL << L"│ Популярные пресеты: 1920x1080 | 1600x900 | 1280x720 | 1024x768\n";
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
-        std::wcin >> newWidth;
+        if (!(std::wcin >> newWidth)) {
+            throw std::runtime_error("Введена некорректная ширина окна");
+        }
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
-        std::wcin >> newHeight;
+        if (!(std::wcin >> newHeight)) {
+            throw std::runtime_error("Введена некорректная высота окна");
+        }
         std::wcout << AMBER << L"└───────────────────────────────────────────────────────────────────────────────┘\n" << RESET;
 
         if (newWidth <= 0 || newHeight <= 0) {
@@ -851,21 +868,25 @@ int main() {
             std::wcout << L"║ 🛑 [ СТАНЦИЯ В БЕЗОПАСНОСТИ ] Для восстановления и выхода нажмите ENTER...    ║\n";
             std::wcout << L"╚═══════════════════════════════════════════════════════════════════════════════╝\n\n" << RESET;
 
-            std::wcin.ignore();
+            ClearInputBuffer();
             std::wcin.get();
 
             CleanupResources();
         }
         else {
             std::wcout << AMBER << L"\n[ 🛑 ] Нажмите ENTER для выхода из терминала..." << RESET << std::endl;
-            std::wcin.ignore();
+            ClearInputBuffer();
             std::wcin.get();
         }
     }
     catch (const std::exception& ex) {
+        if (std::wcin.fail()) {
+            std::wcin.clear();
+        }
+        std::wcin.ignore((std::numeric_limits<std::streamsize>::max)(), L'\n');
+
         std::wcerr << HAZARD_RED << L"\n[ ❌ КРИТИЧЕСКИЙ СБОЙ СИСТЕМЫ 2033 ]: " << ex.what() << RESET << std::endl;
         std::wcout << AMBER << L"\n[ 🛑 ] Нажмите ENTER для выхода из терминала..." << RESET << std::endl;
-        std::wcin.ignore();
         std::wcin.get();
     }
 
