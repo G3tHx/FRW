@@ -106,6 +106,15 @@ bool g_isDragging = false;
 POINT g_dragStart = { 0, 0 };
 
 // Helper Functions
+bool ReadIntWithValidation(int& outValue) {
+    if (!(std::wcin >> outValue)) {
+        std::wcin.clear();
+        std::wcin.ignore(10000, L'\n');
+        return false;
+    }
+    return true;
+}
+
 void SetupConsoleForCyrillic() {
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
@@ -711,7 +720,9 @@ int main() {
         std::wcout << AMBER << L"└─► " << BRIGHT_GREEN << L"ВЫБОР: " << RESET;
 
         int windowIndex;
-        std::wcin >> windowIndex;
+        if (!ReadIntWithValidation(windowIndex)) {
+            throw std::runtime_error("Введено нечисловое значение для выбора окна");
+        }
 
         HWND targetWindow = NULL;
         DWORD targetProcessId = 0;
@@ -757,7 +768,9 @@ int main() {
 
             std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса: " << RESET;
             int processIndex;
-            std::wcin >> processIndex;
+            if (!ReadIntWithValidation(processIndex)) {
+                throw std::runtime_error("Введено нечисловое значение для номера процесса");
+            }
 
             if (processIndex >= 1 && processIndex <= static_cast<int>(processes.size())) {
                 auto it = processes.begin();
@@ -800,9 +813,13 @@ int main() {
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
-        std::wcin >> newWidth;
+        if (!ReadIntWithValidation(newWidth)) {
+            throw std::runtime_error("Некорректный ввод ширины окна");
+        }
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
-        std::wcin >> newHeight;
+        if (!ReadIntWithValidation(newHeight)) {
+            throw std::runtime_error("Некорректный ввод высоты окна");
+        }
         std::wcout << AMBER << L"└───────────────────────────────────────────────────────────────────────────────┘\n" << RESET;
 
         if (newWidth <= 0 || newHeight <= 0) {
