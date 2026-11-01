@@ -798,6 +798,17 @@ int main() {
         // Prompt for desired window dimensions
         int newWidth, newHeight;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
+        if (forceAllWindows) {
+            size_t procWindowCount = FindWindowsForProcess(targetProcessId).size();
+            std::wcout << STEEL << L"│ Найдено окон процесса для изменения: " << WARN_YELLOW << procWindowCount << STEEL << L"\n";
+        } else {
+            RECT currentRect;
+            GetWindowRect(targetWindow, &currentRect);
+            int currentW = currentRect.right - currentRect.left;
+            int currentH = currentRect.bottom - currentRect.top;
+            std::wcout << STEEL << L"│ Текущий размер выбранного окна: " << WARN_YELLOW
+                       << currentW << L"x" << currentH << STEEL << L" px\n";
+        }
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
         std::wcin >> newWidth;
@@ -822,21 +833,13 @@ int main() {
             }
         }
         else {
-            RECT windowRect;
-            GetWindowRect(targetWindow, &windowRect);
-            int currentWidth = windowRect.right - windowRect.left;
-            int currentHeight = windowRect.bottom - windowRect.top;
-
-            std::wcout << STEEL << L"\n[ ℹ ] Исходный размер окна: " << WARN_YELLOW
-                       << currentWidth << L"x" << currentHeight << STEEL << L" px\n" << RESET;
-
             if (ForceWindowSize(targetWindow, newWidth, newHeight)) {
-                std::wcout << GREEN << L"[ ✔ ] Разрешение окна принудительно установлено на "
+                std::wcout << GREEN << L"\n[ ✔ ] Разрешение окна принудительно установлено на "
                            << WARN_YELLOW << newWidth << L"x" << newHeight << GREEN << L" px\n" << RESET;
                 success = true;
             }
             else {
-                std::wcout << HAZARD_RED << L"[ ❌ ] Не удалось изменить размер окна!\n" << RESET;
+                std::wcout << HAZARD_RED << L"\n[ ❌ ] Не удалось изменить размер окна!\n" << RESET;
             }
         }
 
