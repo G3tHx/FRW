@@ -676,29 +676,33 @@ int main() {
         std::wcout << DARK_STEEL << L"├───┼─────────────────────────────────────────┼─────────────────────────────────┤\n" << RESET;
 
         auto windows = EnumerateWindows();
-        for (size_t i = 0; i < windows.size(); ++i) {
-            std::wstring processName = GetProcessNameById(windows[i].processId);
+        if (windows.empty()) {
+            std::wcout << DARK_STEEL << L"│ " << WARN_YELLOW << L"[ ! ] Активные окна не обнаружены в системе.                                  " << DARK_STEEL << L"│\n" << RESET;
+        } else {
+            for (size_t i = 0; i < windows.size(); ++i) {
+                std::wstring processName = GetProcessNameById(windows[i].processId);
 
-            std::wstring titleDisplay = windows[i].title;
-            if (titleDisplay.length() > 39) {
-                titleDisplay = titleDisplay.substr(0, 36) + L"...";
-            } else {
-                titleDisplay.resize(39, L' ');
+                std::wstring titleDisplay = windows[i].title;
+                if (titleDisplay.length() > 39) {
+                    titleDisplay = titleDisplay.substr(0, 36) + L"...";
+                } else {
+                    titleDisplay.resize(39, L' ');
+                }
+
+                std::wstring procInfo = processName + L" (" + std::to_wstring(windows[i].processId) + L")";
+                if (procInfo.length() > 31) {
+                    procInfo = procInfo.substr(0, 28) + L"...";
+                } else {
+                    procInfo.resize(31, L' ');
+                }
+
+                wchar_t numStr[10];
+                swprintf(numStr, 10, L"%02d", static_cast<int>(i + 1));
+
+                std::wcout << DARK_STEEL << L"│ " << WARN_YELLOW << numStr << DARK_STEEL << L" │ "
+                           << GREEN << titleDisplay << DARK_STEEL << L" │ "
+                           << STEEL << procInfo << DARK_STEEL << L" │\n" << RESET;
             }
-
-            std::wstring procInfo = processName + L" (" + std::to_wstring(windows[i].processId) + L")";
-            if (procInfo.length() > 31) {
-                procInfo = procInfo.substr(0, 28) + L"...";
-            } else {
-                procInfo.resize(31, L' ');
-            }
-
-            wchar_t numStr[10];
-            swprintf(numStr, 10, L"%02d", static_cast<int>(i + 1));
-
-            std::wcout << DARK_STEEL << L"│ " << WARN_YELLOW << numStr << DARK_STEEL << L" │ "
-                       << GREEN << titleDisplay << DARK_STEEL << L" │ "
-                       << STEEL << procInfo << DARK_STEEL << L" │\n" << RESET;
         }
 
         std::wcout << DARK_STEEL << L"└───┴─────────────────────────────────────────┴─────────────────────────────────┘\n\n" << RESET;
@@ -790,6 +794,8 @@ int main() {
         else if (windowIndex >= 1 && windowIndex <= static_cast<int>(windows.size())) {
             targetWindow = windows[windowIndex - 1].hwnd;
             targetProcessId = windows[windowIndex - 1].processId;
+            std::wcout << GREEN << L"[ ✔ ] Захвачено окно: " << WARN_YELLOW << windows[windowIndex - 1].title
+                       << GREEN << L" (PID: " << CYAN_GLOW << targetProcessId << GREEN << L")\n" << RESET;
         }
         else {
             throw std::runtime_error("Некорректный номер окна");
