@@ -799,6 +799,19 @@ int main() {
         int newWidth, newHeight;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
+
+        int initialWidth = 0;
+        int initialHeight = 0;
+        if (!forceAllWindows && targetWindow != NULL) {
+            RECT windowRect;
+            if (GetWindowRect(targetWindow, &windowRect)) {
+                initialWidth = windowRect.right - windowRect.left;
+                initialHeight = windowRect.bottom - windowRect.top;
+                std::wcout << STEEL << L"│ Текущий размер выбранного окна: " << WARN_YELLOW
+                           << initialWidth << L"x" << initialHeight << STEEL << L" px\n" << RESET;
+            }
+        }
+
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
         std::wcin >> newWidth;
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
@@ -822,10 +835,14 @@ int main() {
             }
         }
         else {
-            RECT windowRect;
-            GetWindowRect(targetWindow, &windowRect);
-            int currentWidth = windowRect.right - windowRect.left;
-            int currentHeight = windowRect.bottom - windowRect.top;
+            int currentWidth = initialWidth;
+            int currentHeight = initialHeight;
+            if (currentWidth == 0 || currentHeight == 0) {
+                RECT windowRect;
+                GetWindowRect(targetWindow, &windowRect);
+                currentWidth = windowRect.right - windowRect.left;
+                currentHeight = windowRect.bottom - windowRect.top;
+            }
 
             std::wcout << STEEL << L"\n[ ℹ ] Исходный размер окна: " << WARN_YELLOW
                        << currentWidth << L"x" << currentHeight << STEEL << L" px\n" << RESET;
