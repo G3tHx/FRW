@@ -668,44 +668,53 @@ int main() {
         // Print post-apocalyptic Metro 2033 Header
         PrintMetroBanner();
 
+        auto windows = EnumerateWindows();
+
         // List all available windows in a structured box container
-        std::wcout << AMBER << L"┌─── [ ☢ СПИСОК АКТИВНЫХ ОКОН В СИСТЕМЕ ☢ ] ───────────────────────────────────────────┐\n" << RESET;
+        std::wcout << AMBER << L"┌─── [ ☢ СПИСОК АКТИВНЫХ ОКОН В СИСТЕМЕ ☢ | ВСЕГО: " << WARN_YELLOW << windows.size() << AMBER << L" ] ─────────────────────────┐\n" << RESET;
         std::wcout << DARK_STEEL << L"│ " << AMBER << L"№   " << DARK_STEEL << L"│ "
                    << GREEN << L"НАЗВАНИЕ ОКНА                            " << DARK_STEEL << L"│ "
                    << CYAN_GLOW << L"ПРОЦЕСС (PID)                   " << DARK_STEEL << L"│\n" << RESET;
         std::wcout << DARK_STEEL << L"├───┼─────────────────────────────────────────┼─────────────────────────────────┤\n" << RESET;
 
-        auto windows = EnumerateWindows();
-        for (size_t i = 0; i < windows.size(); ++i) {
-            std::wstring processName = GetProcessNameById(windows[i].processId);
+        if (windows.empty()) {
+            std::wcout << DARK_STEEL << L"│ " << WARN_YELLOW
+                       << L"     [ ! ] Активные окна не обнаружены в системе. Запустите приложения.    "
+                       << DARK_STEEL << L" │\n" << RESET;
+        } else {
+            for (size_t i = 0; i < windows.size(); ++i) {
+                std::wstring processName = GetProcessNameById(windows[i].processId);
 
-            std::wstring titleDisplay = windows[i].title;
-            if (titleDisplay.length() > 39) {
-                titleDisplay = titleDisplay.substr(0, 36) + L"...";
-            } else {
-                titleDisplay.resize(39, L' ');
+                std::wstring titleDisplay = windows[i].title;
+                if (titleDisplay.length() > 39) {
+                    titleDisplay = titleDisplay.substr(0, 36) + L"...";
+                } else {
+                    titleDisplay.resize(39, L' ');
+                }
+
+                std::wstring procInfo = processName + L" (" + std::to_wstring(windows[i].processId) + L")";
+                if (procInfo.length() > 31) {
+                    procInfo = procInfo.substr(0, 28) + L"...";
+                } else {
+                    procInfo.resize(31, L' ');
+                }
+
+                wchar_t numStr[10];
+                swprintf(numStr, 10, L"%02d", static_cast<int>(i + 1));
+
+                std::wcout << DARK_STEEL << L"│ " << WARN_YELLOW << numStr << DARK_STEEL << L" │ "
+                           << GREEN << titleDisplay << DARK_STEEL << L" │ "
+                           << STEEL << procInfo << DARK_STEEL << L" │\n" << RESET;
             }
-
-            std::wstring procInfo = processName + L" (" + std::to_wstring(windows[i].processId) + L")";
-            if (procInfo.length() > 31) {
-                procInfo = procInfo.substr(0, 28) + L"...";
-            } else {
-                procInfo.resize(31, L' ');
-            }
-
-            wchar_t numStr[10];
-            swprintf(numStr, 10, L"%02d", static_cast<int>(i + 1));
-
-            std::wcout << DARK_STEEL << L"│ " << WARN_YELLOW << numStr << DARK_STEEL << L" │ "
-                       << GREEN << titleDisplay << DARK_STEEL << L" │ "
-                       << STEEL << procInfo << DARK_STEEL << L" │\n" << RESET;
         }
 
         std::wcout << DARK_STEEL << L"└───┴─────────────────────────────────────────┴─────────────────────────────────┘\n\n" << RESET;
 
         // Interactive Selection Menu
         std::wcout << AMBER << L"┌── [ ⚡ ВЫБОР ЦЕЛИ ⚡ ] ────────────────────────────────────────────────────────┐\n" << RESET;
-        std::wcout << STEEL << L"│ Введите " << WARN_YELLOW << L"номер окна" << STEEL << L" из списка для прямого захвата,\n";
+        if (!windows.empty()) {
+            std::wcout << STEEL << L"│ Введите " << WARN_YELLOW << L"номер окна (1.." << windows.size() << L")" << STEEL << L" из списка для прямого захвата,\n";
+        }
         std::wcout << STEEL << L"│ Введите " << WARN_YELLOW << L"0" << STEEL << L" для поиска окна по названию,\n";
         std::wcout << STEEL << L"│ Или " << WARN_YELLOW << L"-1" << STEEL << L" для захвата всех окон определенного процесса.\n";
         std::wcout << AMBER << L"└─► " << BRIGHT_GREEN << L"ВЫБОР: " << RESET;
@@ -755,7 +764,7 @@ int main() {
             }
             std::wcout << DARK_STEEL << L"└───┴─────────────────────────────────┴─────────────────┘\n\n" << RESET;
 
-            std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса: " << RESET;
+            std::wcout << AMBER << L"┌───► " << BRIGHT_GREEN << L"Введите номер процесса (1.." << processes.size() << L"): " << RESET;
             int processIndex;
             std::wcin >> processIndex;
 
@@ -769,7 +778,8 @@ int main() {
                            << GREEN << L" (PID: " << CYAN_GLOW << targetProcessId << GREEN << L")\n" << RESET;
             }
             else {
-                throw std::runtime_error("Некорректный номер процесса");
+                std::string err = "Некорректный номер процесса (ожидался диапазон 1.." + std::to_string(processes.size()) + ")";
+                throw std::runtime_error(err);
             }
         }
         else if (windowIndex == 0) {
@@ -792,7 +802,9 @@ int main() {
             targetProcessId = windows[windowIndex - 1].processId;
         }
         else {
-            throw std::runtime_error("Некорректный номер окна");
+            std::string err = windows.empty() ? "Список окон пуст. Доступны только режимы 0 (поиск) или -1 (процесс)"
+                                              : "Некорректный номер окна (ожидался диапазон 1.." + std::to_string(windows.size()) + ", либо 0 / -1)";
+            throw std::runtime_error(err);
         }
 
         // Prompt for desired window dimensions
