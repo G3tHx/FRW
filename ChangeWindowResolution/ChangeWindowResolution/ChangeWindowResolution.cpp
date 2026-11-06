@@ -799,6 +799,14 @@ int main() {
         int newWidth, newHeight;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
+        if (targetWindow && !forceAllWindows) {
+            RECT windowRect;
+            if (GetWindowRect(targetWindow, &windowRect)) {
+                int curW = windowRect.right - windowRect.left;
+                int curH = windowRect.bottom - windowRect.top;
+                std::wcout << STEEL << L"│ Текущий размер: " << WARN_YELLOW << curW << L" x " << curH << STEEL << L" px\n";
+            }
+        }
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
         std::wcin >> newWidth;
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ВЫСОТА (px): " << RESET;
@@ -822,21 +830,13 @@ int main() {
             }
         }
         else {
-            RECT windowRect;
-            GetWindowRect(targetWindow, &windowRect);
-            int currentWidth = windowRect.right - windowRect.left;
-            int currentHeight = windowRect.bottom - windowRect.top;
-
-            std::wcout << STEEL << L"\n[ ℹ ] Исходный размер окна: " << WARN_YELLOW
-                       << currentWidth << L"x" << currentHeight << STEEL << L" px\n" << RESET;
-
             if (ForceWindowSize(targetWindow, newWidth, newHeight)) {
-                std::wcout << GREEN << L"[ ✔ ] Разрешение окна принудительно установлено на "
+                std::wcout << GREEN << L"\n[ ✔ ] Разрешение окна принудительно установлено на "
                            << WARN_YELLOW << newWidth << L"x" << newHeight << GREEN << L" px\n" << RESET;
                 success = true;
             }
             else {
-                std::wcout << HAZARD_RED << L"[ ❌ ] Не удалось изменить размер окна!\n" << RESET;
+                std::wcout << HAZARD_RED << L"\n[ ❌ ] Не удалось изменить размер окна!\n" << RESET;
             }
         }
 
