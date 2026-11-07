@@ -1,0 +1,3 @@
+## 2026-10-26 - Contextual Baseline Disclosure in Terminal Prompts
+**Learning:** In interactive CLI/terminal tools that prompt users for geometric or numerical changes (such as window width and height), users make sizing decisions relative to current state. Disclosing current baseline values *within* the input prompt boundary rather than after input submission prevents guesswork, avoids accidental distortion of aspect ratios, and provides clear reassurance about which target is being modified.
+**Action:** Always present the current baseline dimension or state directly inside the interactive parameter prompt container before awaiting user input.
