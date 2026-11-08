@@ -790,6 +790,8 @@ int main() {
         else if (windowIndex >= 1 && windowIndex <= static_cast<int>(windows.size())) {
             targetWindow = windows[windowIndex - 1].hwnd;
             targetProcessId = windows[windowIndex - 1].processId;
+            std::wcout << GREEN << L"[ ✔ ] Захвачено окно: " << WARN_YELLOW << windows[windowIndex - 1].title
+                       << GREEN << L" (PID: " << CYAN_GLOW << targetProcessId << GREEN << L")\n" << RESET;
         }
         else {
             throw std::runtime_error("Некорректный номер окна");
@@ -798,6 +800,14 @@ int main() {
         // Prompt for desired window dimensions
         int newWidth, newHeight;
         std::wcout << AMBER << L"\n┌── [ 📐 НАСТРОЙКА РАЗРЕШЕНИЯ (2033 ENGINE) ] ───────────────────────────────────┐\n" << RESET;
+        if (!forceAllWindows && targetWindow) {
+            RECT currentRect = { 0, 0, 0, 0 };
+            if (GetWindowRect(targetWindow, &currentRect)) {
+                int curW = currentRect.right - currentRect.left;
+                int curH = currentRect.bottom - currentRect.top;
+                std::wcout << STEEL << L"│ Текущий размер цели: " << WARN_YELLOW << curW << L"x" << curH << STEEL << L" px\n" << RESET;
+            }
+        }
         std::wcout << STEEL << L"│ Укажите целевые параметры геометрии окна в пикселях.\n";
         std::wcout << AMBER << L"├─► " << GREEN << L"Новая ШИРИНА  (px): " << RESET;
         std::wcin >> newWidth;
@@ -822,21 +832,13 @@ int main() {
             }
         }
         else {
-            RECT windowRect;
-            GetWindowRect(targetWindow, &windowRect);
-            int currentWidth = windowRect.right - windowRect.left;
-            int currentHeight = windowRect.bottom - windowRect.top;
-
-            std::wcout << STEEL << L"\n[ ℹ ] Исходный размер окна: " << WARN_YELLOW
-                       << currentWidth << L"x" << currentHeight << STEEL << L" px\n" << RESET;
-
             if (ForceWindowSize(targetWindow, newWidth, newHeight)) {
-                std::wcout << GREEN << L"[ ✔ ] Разрешение окна принудительно установлено на "
+                std::wcout << GREEN << L"\n[ ✔ ] Разрешение окна принудительно установлено на "
                            << WARN_YELLOW << newWidth << L"x" << newHeight << GREEN << L" px\n" << RESET;
                 success = true;
             }
             else {
-                std::wcout << HAZARD_RED << L"[ ❌ ] Не удалось изменить размер окна!\n" << RESET;
+                std::wcout << HAZARD_RED << L"\n[ ❌ ] Не удалось изменить размер окна!\n" << RESET;
             }
         }
 
